@@ -1,55 +1,72 @@
 # 🔓 Cloudflare Turnstile Solver
 
-Solver Cloudflare Turnstile otomatis menggunakan Puppeteer dengan stealth plugin. Mendukung multi-thread, proxy rotation, dan custom user-agent.
+Solver Cloudflare Turnstile otomatis menggunakan `puppeteer-real-browser`. Mendukung dua mode solve, screen recording, dan proxy.
 
 ## ✨ Fitur
 
 - Solve Cloudflare Turnstile secara otomatis
-- Browser pool (multi-thread) untuk concurrent solving
-- Support proxy rotation dari file `data/proxies.txt`
-- Custom user-agent dari file `data/useragents.txt` atau fallback otomatis
+- **Mode Sitekey** — inject fake page dengan sitekey eksplisit
+- **Mode Page** — solve langsung dari halaman target (auto-detect turnstile)
+- Screen recording tiap sesi (`.mp4`) via `puppeteer-screen-recorder`
+- Support proxy dengan autentikasi
 - Output token dalam format JSON
-- CLI-friendly, bisa diintegrasikan ke script lain
 
 ## 📦 Instalasi
 
 ```bash
-npm install puppeteer-extra puppeteer-extra-plugin-stealth
+npm install puppeteer-real-browser puppeteer-screen-recorder
 ```
 
-## 🚀 Penggunaan
+## 🔧 Penggunaan sebagai Module
 
-### CLI
+```js
+const TurnstileSolver = require('./turnstile');
 
-```bash
-node turnstile-solver.js --url <url> --sitekey <sitekey> [options]
+const solver = new TurnstileSolver({
+  timeout: 60000,       // ms tunggu token
+  record: true,         // aktifkan screen recording
+  recordDir: './recordings',
+  // proxy: { host: '...', port: 8080, username: 'user', password: 'pass' },
+  width: 1280,
+  height: 720,
+});
+
+await solver.initialize();
+
+// Mode 1: pakai sitekey eksplisit
+const result = await solver.solve('https://example.com', '0x4AAAAAAA...');
+
+// Mode 2: langsung dari halaman target (tanpa sitekey)
+const result = await solver.solve('https://example.com');
+
+console.log(result);
+await solver.cleanup();
 ```
 
-**Contoh:**
+### Options Konstruktor
 
-```bash
-# Basic
-node turnstile-solver.js --url https://example.com --sitekey 0x4AAAAAAA...
+| Option | Tipe | Default | Deskripsi |
+|--------|------|---------|-----------|
+| `timeout` | `number` | `60000` | Batas waktu tunggu token (ms) |
+| `record` | `boolean` | `false` | Aktifkan screen recording |
+| `recordDir` | `string` | `./recordings` | Folder output recording |
+| `proxy` | `object` | `null` | `{ host, port, username, password }` |
+| `width` | `number` | `1280` | Viewport & recording width |
+| `height` | `number` | `720` | Viewport & recording height |
 
-# Headless + proxy + 3 thread
-node turnstile-solver.js --url https://example.com --sitekey 0x4AAAAAAA... --headless --proxy --threads 3
+### Method
 
-# Dengan action parameter
-node turnstile-solver.js --url https://example.com --sitekey 0x4AAAAAAA... --action login
-```
+| Method | Deskripsi |
+|--------|-----------|
+| `initialize()` | Launch browser (opsional, auto-called saat solve) |
+| `solve(url, siteKey?)` | Solve turnstile — pakai sitekey kalau diisi, auto-detect kalau tidak |
+| `solveWithSitekey(url, siteKey)` | Inject fake page dengan sitekey eksplisit |
+| `solveFromPage(url)` | Solve langsung dari halaman target |
+| `cleanup()` | Tutup browser |
 
-### Options
+## 📤 Output
 
-| Flag | Deskripsi | Default |
-|------|-----------|---------|
-| `--url` | URL target (wajib) | - |
-| `--sitekey` | Sitekey Turnstile (wajib) | - |
-| `--action` | Action parameter widget | - |
-| `--threads` | Jumlah browser di pool | `1` |
-| `--headless` | Jalankan browser headless | `false` |
-| `--proxy` | Aktifkan proxy rotation | `false` |
-
-### Output
+Berhasil:
 
 ```json
 {
@@ -60,70 +77,43 @@ node turnstile-solver.js --url https://example.com --sitekey 0x4AAAAAAA... --act
 }
 ```
 
-Kalau gagal:
+Gagal:
 
 ```json
 {
   "success": false,
-  "error": "Token not received",
-  "time": 30.012
+  "error": "Token invalid or empty",
+  "time": 60.012
 }
 ```
 
-## 📁 Struktur File Opsional
+## 📁 Recording
+
+Kalau `record: true`, setiap sesi disimpan ke `recordDir` dengan nama:
 
 ```
-data/
-├── proxies.txt      # satu proxy per baris (format: http://host:port atau http://user:pass@host:port)
-└── useragents.txt   # satu user-agent per baris
-```
-
-Kalau file-file ini tidak ada, solver tetap jalan pakai fallback UA bawaan dan tanpa proxy.
-
-### Contoh `proxies.txt`
-
-```
-http://123.45.67.89:8080
-http://user:pass@98.76.54.32:3128
-```
-
-### Contoh `useragents.txt`
-
-```
-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36
-Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/123.0 Safari/537.36
-```
-
-## 🔧 Penggunaan sebagai Module
-
-```js
-const { TurnstileSolver } = require('./turnstile-solver');
-
-const solver = new TurnstileSolver({
-  headless: true,
-  threads: 2,
-  useProxy: false,
-});
-
-await solver.initialize();
-
-const result = await solver.solve('https://example.com', '0x4AAAAAAA...');
-console.log(result);
-
-await solver.cleanup();
+recordings/
+├── sitekey_0x4AAAAAAA_1747123456789.mp4   ← mode sitekey
+└── page_solve_1747123456789.mp4            ← mode page
 ```
 
 ## ⚙️ Cara Kerja
 
-1. Solver inject HTML Turnstile widget ke URL target menggunakan request interception
-2. Browser membuka halaman dan menunggu widget Cloudflare load
-3. Solver klik widget, lalu polling token setiap 1 detik (maks 30 detik)
-4. Token dikembalikan dalam format JSON beserta waktu solve
+**Mode Sitekey (`solveWithSitekey`)**
+1. Request interception aktif — halaman target dibalas dengan fake HTML berisi widget Turnstile
+2. `puppeteer-real-browser` + `turnstile: true` handle solve otomatis
+3. Token diambil dari input hidden `[name="cf-response"]`
+
+**Mode Page (`solveFromPage`)**
+1. Script inject via `evaluateOnNewDocument` untuk polling `window.turnstile.getResponse()`
+2. Token yang ditemukan ditulis ke input hidden `[name="cf-response"]`
+3. `waitForSelector` menunggu sampai token siap
 
 ## 📋 Requirements
 
 - Node.js >= 18
-- Chromium (otomatis diinstall oleh Puppeteer)
+- `ffmpeg` (dibutuhkan `puppeteer-screen-recorder` untuk encode MP4)
+- Xvfb (untuk headless di Linux — dihandle otomatis oleh `puppeteer-real-browser`)
 
 ## ⚠️ Disclaimer
 
