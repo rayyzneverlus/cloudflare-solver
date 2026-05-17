@@ -1,4 +1,4 @@
-const TurnstileSolver = require('./');
+const TurnstileSolver = require('./turnstile-solver');
 
 (async () => {
   const solver = new TurnstileSolver({
