@@ -1,36 +1,15 @@
-FROM node:18-slim
+FROM node:18
 
-# Instal semua dependensi OS untuk Chromium dan layar virtual (Xvfb)
+# Instal dependensi esensial untuk Google Chrome dan Xvfb
 RUN apt-get update && apt-get install -y \
-    chromium \
     xvfb \
-    fonts-liberation \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libc6 \
-    libcairo2 \
-    libcups2 \
-    libdbus-1-3 \
-    libx11-6 \
-    libx11-xcb1 \
-    libxcb1 \
-    libxcomposite1 \
-    libxcursor1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxi6 \
-    libxrandr2 \
-    libxrender1 \
+    x11-xserver-utils \
     libxss1 \
-    libxtst6 \
+    libgconf-2-4 \
+    libnss3 \
+    libasound2 \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
-
-# Set up environment variables untuk Puppeteer
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
@@ -39,8 +18,7 @@ RUN npm install
 
 COPY . .
 
-# Beritahu Railway port yang akan dibuka (Railway akan mendeteksi ini)
 EXPOSE 3000
 
-# Jalankan aplikasi menggunakan xvfb-run agar browser tidak crash saat 'headless'
-CMD ["xvfb-run", "--server-args=-screen 0 1280x1024x24", "node", "run.js"]
+# Jalankan Xvfb secara eksplisit sebelum memanggil Node
+CMD ["xvfb-run", "--server-args=-screen 0 1280x1024x24 -ac", "node", "run.js"]
