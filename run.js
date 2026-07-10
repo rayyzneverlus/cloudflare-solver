@@ -4,7 +4,6 @@ const { solveCloudflare } = require('./cloudflare-solver');
 const TurnstileSolver = require('./turnstile-solver');
 
 const app = express();
-// Railway otomatis memberikan port via process.env.PORT, default ke 3000 jika lokal
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
@@ -22,7 +21,14 @@ app.post('/api/solve', async (req, res) => {
     if (type === 'turnstile') {
       const solver = new TurnstileSolver({ 
         headless: true, 
-        record: false 
+        record: false,
+        // FIX: Suntikkan argumen wajib Docker agar tidak crash
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu'
+        ]
       });
       
       await solver.initialize();
@@ -35,6 +41,13 @@ app.post('/api/solve', async (req, res) => {
         url: url,
         headless: true,
         timeout: 60,
+        // FIX: Tambahkan flag ke fungsi cloudflare-solver jika didukung oleh library-nya
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu'
+        ]
       });
       return res.json(result);
     }
