@@ -1,0 +1,17 @@
+{
+  "name": "cloudflare-turnstile-solver-api",
+  "version": "1.0.0",
+  "description": "API & UI Solver untuk Cloudflare menggunakan puppeteer-real-browser",
+  "main": "run.js",
+  "scripts": {
+    "start": "node run.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "puppeteer-real-browser": "^1.2.9",
+    "puppeteer-screen-recorder": "^2.1.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
