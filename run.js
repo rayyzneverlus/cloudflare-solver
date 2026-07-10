@@ -4,13 +4,13 @@ const { solveCloudflare } = require('./cloudflare-solver');
 const TurnstileSolver = require('./turnstile-solver');
 
 const app = express();
+// Railway otomatis memberikan port via process.env.PORT, default ke 3000 jika lokal
 const PORT = process.env.PORT || 3000;
 
-// Middleware untuk membaca JSON dan menyajikan file statis (Frontend)
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Endpoint API untuk memproses Turnstile atau Cloudflare secara dinamis
+// Endpoint API Utama
 app.post('/api/solve', async (req, res) => {
   const { type, url, sitekey } = req.body;
 
@@ -26,13 +26,11 @@ app.post('/api/solve', async (req, res) => {
       });
       
       await solver.initialize();
-      // Jika sitekey kosong, otomatis menggunakan mode Page Auto-Detect
       const result = await solver.solve(url, sitekey || undefined);
       await solver.cleanup();
       
       return res.json(result);
     } else {
-      // Default: Cloudflare Solver
       const result = await solveCloudflare({
         url: url,
         headless: true,
@@ -41,11 +39,12 @@ app.post('/api/solve', async (req, res) => {
       return res.json(result);
     }
   } catch (error) {
+    console.error('Solver Error:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Jalankan server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// FIX: Menggunakan '0.0.0.0' agar Railway bisa melakukan port-forwarding dengan benar
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running internally on port ${PORT}`);
 });
