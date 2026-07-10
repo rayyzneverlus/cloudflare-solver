@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solver Dashboard</title>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, button { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #333; background: #2a2a2a; color: #fff; box-sizing: border-box; }
+        button { background: #007acc; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        button:hover { background: #005999; }
+        pre { background: #000; padding: 15px; border-radius: 4px; overflow-x: auto; color: #00ff00; font-size: 13px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Cloudflare & Turnstile Solver</h2>
+    <hr style="border-color: #333;">
+    
+    <div class="form-group">
+        <label>Tipe Solver</label>
+        <select id="type" onchange="toggleSitekey()">
+            <option value="turnstile">Turnstile Solver</option>
+            <option value="cloudflare">Cloudflare Challenge Solver</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>URL Target</label>
+        <input type="url" id="url" placeholder="https://example.com" required>
+    </div>
+
+    <div class="form-group" id="sitekey-group">
+        <label>Sitekey (Opsional untuk Mode Page)</label>
+        <input type="text" id="sitekey" placeholder="0x4AAAAAAA...">
+    </div>
+
+    <button onclick="processSolver()">Kirim Request</button>
+
+    <h3>Output / Hasil:</h3>
+    <pre id="output">Hasil akan muncul di sini...</pre>
+</div>
+
+<script>
+    function toggleSitekey() {
+        const type = document.getElementById('type').value;
+        const group = document.getElementById('sitekey-group');
+        if (type === 'cloudflare') {
+            group.classList.add('hidden');
+        } else {
+            group.classList.remove('hidden');
+        }
+    }
+
+    async function processSolver() {
+        const type = document.getElementById('type').value;
+        const url = document.getElementById('url').value;
+        const sitekey = document.getElementById('sitekey').value;
+        const output = document.getElementById('output');
+
+        if (!url) return alert('Mohon isi URL target terlebih dahulu.');
+
+        output.textContent = 'Sedang memproses, mohon tunggu... (Bisa memakan waktu hingga 1 menit)';
+
+        try {
+            const response = await fetch('/api/solve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type, url, sitekey })
+            });
+            const data = await response.json();
+            output.textContent = JSON.stringify(data, null, 2);
+        } catch (err) {
+            output.textContent = 'Terjadi kesalahan sistem: ' + err.message;
+        }
+    }
+</script>
+</body>
+</html>
