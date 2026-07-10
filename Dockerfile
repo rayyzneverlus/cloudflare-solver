@@ -1,6 +1,6 @@
 FROM node:18-slim
 
-# Instal dependensi dasar sistem untuk menjalankan Chromium & Xvfb headless
+# Instal semua dependensi OS untuk Chromium dan layar virtual (Xvfb)
 RUN apt-get update && apt-get install -y \
     chromium \
     xvfb \
@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Konfigurasi environment untuk Puppeteer bawaan system
+# Set up environment variables untuk Puppeteer
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
@@ -39,8 +39,8 @@ RUN npm install
 
 COPY . .
 
-# Ekspos port default Railway
+# Beritahu Railway port yang akan dibuka (Railway akan mendeteksi ini)
 EXPOSE 3000
 
-# Jalankan server via virtual display buffer
+# Jalankan aplikasi menggunakan xvfb-run agar browser tidak crash saat 'headless'
 CMD ["xvfb-run", "--server-args=-screen 0 1280x1024x24", "node", "run.js"]
